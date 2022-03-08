@@ -91,7 +91,7 @@ class MUNIT(object) :
     def Style_Encoder(self, x, reuse=False, scope='style_encoder'):
         # IN removes the original feature mean and variance that represent important style information
         channel = self.ch
-        with tf.variable_scope(scope, reuse=reuse) :
+        with tf.compat.v1.variable_scope(scope, reuse=reuse) :
             x = conv(x, channel, kernel=7, stride=1, pad=3, pad_type='reflect', scope='conv_0')
             x = relu(x)
 
@@ -112,7 +112,7 @@ class MUNIT(object) :
 
     def Content_Encoder(self, x, reuse=False, scope='content_encoder'):
         channel = self.ch
-        with tf.variable_scope(scope, reuse=reuse) :
+        with tf.compat.v1.variable_scope(scope, reuse=reuse) :
             x = conv(x, channel, kernel=7, stride=1, pad=3, pad_type='reflect', scope='conv_0')
             x = instance_norm(x, scope='ins_0')
             x = relu(x)
@@ -131,7 +131,7 @@ class MUNIT(object) :
 
     def generator(self, contents, style, reuse=False, scope="decoder"):
         channel = self.mlp_dim
-        with tf.variable_scope(scope, reuse=reuse) :
+        with tf.compat.v1.variable_scope(scope, reuse=reuse) :
             mu, var = self.MLP(style)
             x = contents
 
@@ -155,7 +155,7 @@ class MUNIT(object) :
 
     def MLP(self, style, scope='MLP'):
         channel = self.mlp_dim
-        with tf.variable_scope(scope) :
+        with tf.compat.v1.variable_scope(scope) :
             x = style
 
             for i in range(2):
@@ -183,7 +183,7 @@ class MUNIT(object) :
 
     def discriminator(self, x_init, reuse=False, scope="discriminator"):
         D_logit = []
-        with tf.variable_scope(scope, reuse=reuse) :
+        with tf.compat.v1.variable_scope(scope, reuse=reuse) :
             for scale in range(self.n_scale) :
                 channel = self.ch
                 x = conv(x_init, channel, kernel=4, stride=2, pad=1, pad_type='reflect', scope='ms_' + str(scale) + 'conv_0')
@@ -241,7 +241,7 @@ class MUNIT(object) :
         return fake_A_logit, fake_B_logit
 
     def build_model(self):
-        self.lr = tf.placeholder(tf.float32, name='learning_rate')
+        self.lr = tf.compat.v1.placeholder(tf.float32, name='learning_rate')
 
         """ Input Image"""
         Image_Data_Class = ImageData(self.img_h, self.img_w, self.img_ch, self.augment_flag)
@@ -252,8 +252,8 @@ class MUNIT(object) :
         trainA = trainA.prefetch(self.batch_size).shuffle(self.dataset_num).map(Image_Data_Class.image_processing, num_parallel_calls=8).apply(batch_and_drop_remainder(self.batch_size)).repeat()
         trainB = trainB.prefetch(self.batch_size).shuffle(self.dataset_num).map(Image_Data_Class.image_processing, num_parallel_calls=8).apply(batch_and_drop_remainder(self.batch_size)).repeat()
 
-        trainA_iterator = trainA.make_one_shot_iterator()
-        trainB_iterator = trainB.make_one_shot_iterator()
+        trainA_iterator = tf.compat.v1.data.make_one_shot_iterator(trainA)
+        trainB_iterator = tf.compat.v1.data.make_one_shot_iterator(trainB)
 
 
         self.domain_A = trainA_iterator.get_next()
@@ -261,8 +261,8 @@ class MUNIT(object) :
 
 
         """ Define Encoder, Generator, Discriminator """
-        self.style_a = tf.placeholder(tf.float32, shape=[self.batch_size, 1, 1, self.style_dim], name='style_a')
-        self.style_b = tf.placeholder(tf.float32, shape=[self.batch_size, 1, 1, self.style_dim], name='style_b')
+        self.style_a = tf.compat.v1.placeholder(tf.float32, shape=[self.batch_size, 1, 1, self.style_dim], name='style_a')
+        self.style_b = tf.compat.v1.placeholder(tf.float32, shape=[self.batch_size, 1, 1, self.style_dim], name='style_b')
 
         # encode
         content_a, style_a_prime = self.Encoder_A(self.domain_A)
@@ -335,24 +335,24 @@ class MUNIT(object) :
         self.Discriminator_loss = Discriminator_A_loss + Discriminator_B_loss + regularization_loss('discriminator')
 
         """ Training """
-        t_vars = tf.trainable_variables()
+        t_vars = tf.compat.v1.trainable_variables()
         G_vars = [var for var in t_vars if 'decoder' in var.name or 'encoder' in var.name]
         D_vars = [var for var in t_vars if 'discriminator' in var.name]
 
 
-        self.G_optim = tf.train.AdamOptimizer(self.lr, beta1=0.5, beta2=0.999).minimize(self.Generator_loss, var_list=G_vars)
-        self.D_optim = tf.train.AdamOptimizer(self.lr, beta1=0.5, beta2=0.999).minimize(self.Discriminator_loss, var_list=D_vars)
+        self.G_optim = tf.compat.v1.train.AdamOptimizer(self.lr, beta1=0.5, beta2=0.999).minimize(self.Generator_loss, var_list=G_vars)
+        self.D_optim = tf.compat.v1.train.AdamOptimizer(self.lr, beta1=0.5, beta2=0.999).minimize(self.Discriminator_loss, var_list=D_vars)
 
         """" Summary """
-        self.all_G_loss = tf.summary.scalar("Generator_loss", self.Generator_loss)
-        self.all_D_loss = tf.summary.scalar("Discriminator_loss", self.Discriminator_loss)
-        self.G_A_loss = tf.summary.scalar("G_A_loss", Generator_A_loss)
-        self.G_B_loss = tf.summary.scalar("G_B_loss", Generator_B_loss)
-        self.D_A_loss = tf.summary.scalar("D_A_loss", Discriminator_A_loss)
-        self.D_B_loss = tf.summary.scalar("D_B_loss", Discriminator_B_loss)
+        self.all_G_loss = tf.compat.v1.summary.scalar("Generator_loss", self.Generator_loss)
+        self.all_D_loss = tf.compat.v1.summary.scalar("Discriminator_loss", self.Discriminator_loss)
+        self.G_A_loss = tf.compat.v1.summary.scalar("G_A_loss", Generator_A_loss)
+        self.G_B_loss = tf.compat.v1.summary.scalar("G_B_loss", Generator_B_loss)
+        self.D_A_loss = tf.compat.v1.summary.scalar("D_A_loss", Discriminator_A_loss)
+        self.D_B_loss = tf.compat.v1.summary.scalar("D_B_loss", Discriminator_B_loss)
 
-        self.G_loss = tf.summary.merge([self.G_A_loss, self.G_B_loss, self.all_G_loss])
-        self.D_loss = tf.summary.merge([self.D_A_loss, self.D_B_loss, self.all_D_loss])
+        self.G_loss = tf.compat.v1.summary.merge([self.G_A_loss, self.G_B_loss, self.all_G_loss])
+        self.D_loss = tf.compat.v1.summary.merge([self.D_A_loss, self.D_B_loss, self.all_D_loss])
 
         """ Image """
         self.fake_A = x_ba
@@ -362,8 +362,8 @@ class MUNIT(object) :
         self.real_B = self.domain_B
 
         """ Test """
-        self.test_image = tf.placeholder(tf.float32, [1, self.img_h, self.img_w, self.img_ch], name='test_image')
-        self.test_style = tf.placeholder(tf.float32, [1, 1, 1, self.style_dim], name='test_style')
+        self.test_image = tf.compat.v1.placeholder(tf.float32, [1, self.img_h, self.img_w, self.img_ch], name='test_image')
+        self.test_style = tf.compat.v1.placeholder(tf.float32, [1, 1, 1, self.style_dim], name='test_style')
 
         test_content_a, _ = self.Encoder_A(self.test_image, reuse=True)
         test_content_b, _ = self.Encoder_B(self.test_image, reuse=True)
@@ -372,8 +372,8 @@ class MUNIT(object) :
         self.test_fake_B = self.Decoder_B(content_A=test_content_a, style_B=self.test_style, reuse=True)
 
         """ Guided Image Translation """
-        self.content_image = tf.placeholder(tf.float32, [1, self.img_h, self.img_w, self.img_ch], name='content_image')
-        self.style_image = tf.placeholder(tf.float32, [1, self.img_h, self.img_w, self.img_ch], name='guide_style_image')
+        self.content_image = tf.compat.v1.placeholder(tf.float32, [1, self.img_h, self.img_w, self.img_ch], name='content_image')
+        self.style_image = tf.compat.v1.placeholder(tf.float32, [1, self.img_h, self.img_w, self.img_ch], name='guide_style_image')
 
         if self.direction == 'a2b' :
             guide_content_A, guide_style_A = self.Encoder_A(self.content_image, reuse=True)
@@ -388,13 +388,13 @@ class MUNIT(object) :
 
     def train(self):
         # initialize all variables
-        tf.global_variables_initializer().run()
+        tf.compat.v1.global_variables_initializer().run()
 
         # saver to save model
-        self.saver = tf.train.Saver()
+        self.saver = tf.compat.v1.train.Saver()
 
         # summary writer
-        self.writer = tf.summary.FileWriter(self.log_dir + '/' + self.model_dir, self.sess.graph)
+        self.writer = tf.compat.v1.summary.FileWriter(self.log_dir + '/' + self.model_dir, self.sess.graph)
 
         # restore check-point if it exits
         could_load, checkpoint_counter = self.load(self.checkpoint_dir)
@@ -488,11 +488,11 @@ class MUNIT(object) :
             return False, 0
 
     def test(self):
-        tf.global_variables_initializer().run()
+        tf.compat.v1.global_variables_initializer().run()
         test_A_files = glob('./dataset/{}/*.*'.format(self.dataset_name + '/testA'))
         test_B_files = glob('./dataset/{}/*.*'.format(self.dataset_name + '/testB'))
 
-        self.saver = tf.train.Saver()
+        self.saver = tf.compat.v1.train.Saver()
         could_load, checkpoint_counter = self.load(self.checkpoint_dir)
         self.result_dir = os.path.join(self.result_dir, self.model_dir)
         check_folder(self.result_dir)
@@ -550,13 +550,13 @@ class MUNIT(object) :
         index.close()
 
     def style_guide_test(self):
-        tf.global_variables_initializer().run()
+        tf.compat.v1.global_variables_initializer().run()
         test_A_files = glob('./dataset/{}/*.*'.format(self.dataset_name + '/testA'))
         test_B_files = glob('./dataset/{}/*.*'.format(self.dataset_name + '/testB'))
 
         style_file = np.asarray(load_test_data(self.guide_img, size_h=self.img_h, size_w=self.img_w))
 
-        self.saver = tf.train.Saver()
+        self.saver = tf.compat.v1.train.Saver()
         could_load, checkpoint_counter = self.load(self.checkpoint_dir)
         self.result_dir = os.path.join(self.result_dir, self.model_dir, 'guide')
         check_folder(self.result_dir)
