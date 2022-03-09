@@ -1,6 +1,6 @@
 import tensorflow as tf
 import tensorflow_addons as tfa
-from src.models.munit_tf3.utils import pytorch_kaiming_weight_factor
+from src.models.munit.utils import pytorch_kaiming_weight_factor
 
 factor, mode, uniform = pytorch_kaiming_weight_factor(a=0.0, uniform=False)
 weight_init = tf.compat.v1.keras.initializers.VarianceScaling(scale=factor, mode=(mode).lower(), distribution=("uniform" if uniform else "truncated_normal"))

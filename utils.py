@@ -58,7 +58,7 @@ def inverse_transform(images):
     return (images+1.) / 2
 
 def imsave(images, size, path):
-    return misc.imsave(path, merge(images, size))
+    return tf.keras.utils.save_img(path, merge(images, size))
 
 def merge(images, size):
     h, w = images.shape[1], images.shape[2]
